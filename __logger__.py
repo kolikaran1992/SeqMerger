@@ -1,5 +1,6 @@
 import logging
-logger = logging.getLogger('merge_sub_sequence')
+from .__common__ import LOGGER_NAME
+logger = logging.getLogger(LOGGER_NAME)
 
 formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(name)s :: %(message)s')
 handler = logging.StreamHandler()

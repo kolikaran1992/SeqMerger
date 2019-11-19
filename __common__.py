@@ -1,0 +1,1 @@
+LOGGER_NAME = 'merge_sub_seq'

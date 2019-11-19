@@ -1,4 +1,7 @@
 from nltk.tokenize import RegexpTokenizer
+from .__common__ import LOGGER_NAME
+import logging
+logger = logging.getLogger(LOGGER_NAME)
 
 class MergeSubSeq(object):
     """
