@@ -58,6 +58,8 @@ class LongestContiguousSubSeq(object):
             logger.info('since one of the sequence is 0 tokens long, therefore returning []')
             return []
 
+        self._populate_memory()
+
         i = len(self._s1)
         j = len(self._s2)
 
@@ -79,4 +81,4 @@ class LongestContiguousSubSeq(object):
             else:
                 j -= 1
 
-        return ret_obj
+        return sorted(ret_obj, key=lambda x: x[0])
