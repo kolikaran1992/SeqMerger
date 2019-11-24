@@ -23,7 +23,7 @@ class LongestContiguousSubSeq(object):
         self._s1 = s1
         self._s2 = s2
 
-        logger.info('sequence 1 is "{}" tokens long and sequence 2 is {} tokens long'.format(len(s1), len(s2)))
+        logger.info('sequence 1 is "{}" tokens long and sequence 2 is "{}" tokens long'.format(len(s1), len(s2)))
 
         ## elements of s1 will represent rows
         ## elements of s2 will represent columns
