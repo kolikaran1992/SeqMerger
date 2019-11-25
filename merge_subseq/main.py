@@ -1,17 +1,16 @@
 from nltk.tokenize import RegexpTokenizer
 from .__common__ import LOGGER_NAME
 import logging
-
-logger = logging.getLogger(LOGGER_NAME)
-
 from .lcs import LongestContiguousSubSeq
 from functools import reduce
+
+logger = logging.getLogger(LOGGER_NAME)
 
 
 class MergeSubSeq(object):
     """
     --> given two string sequences (char or words)
-    --> merge common sub sequences
+    --> return pairwise insertion and deletion in sequence given the its updated version
     """
 
     def __init__(self,
@@ -38,22 +37,38 @@ class MergeSubSeq(object):
         :param l (list): list of tuples
         :return (list): as explained above
         """
-        if len(l) == 1:
-            return [((0, 0), l[0])]
+        a = [(None, None)] + l
+        return list(zip(a[:-1], a[1:]))
 
-        return list(zip([(0, 0)] + l[:-1], [(0, 0)] + l[1:]))
-
-    def extract(self, s1, s2, return_tokens=False):
+    @staticmethod
+    def __process_item(a, b):
         """
-        --> returns common sub sequence from s1 and s2
-        :param s1 (str): first sequence
-        :param s2 (str): second sequence
+        --> return idxs
+        :param a (int or None): token idx
+        :param b (int or None): token idx
+        :return (list): list of token idxs between range a(not included if a is not None else included), b
+        """
+        return list(range(0, b)) if a is None else list(range(a + 1, b))
+
+    @staticmethod
+    def __process_tuple(prev_tup, tup):
+        """
+        --> returns list of idxs between prev_tup[i], tup[i] ; i = 0, 1
+        :param tup (int, int): (tok idx of seq 1, tok idx of seq 2)
+        :param prev_tup (tuple): (a, b), where a, b can be int or None
+        :return (tuple): (list, list) :: (deletion token idxs, insertion token idxs)
+        """
+        idxs_a = MergeSubSeq.__process_item(prev_tup[0], tup[0])
+        idxs_b = MergeSubSeq.__process_item(prev_tup[1], tup[1])
+        return (idxs_a, idxs_b)
+
+    def extract(self, s1, s2):
+        """
+        --> returns changes in s1 considering s2 is updated version of s1
+        :param s1 (str): sequence
+        :param s2 (str): updated sequence
         :return (list): list of dictionaries
-                        -> dictionary structure : {'text': str, 'sequence': str}
-                           the key 'sequence' can be:
-                                            's1' if text belongs to sequence 1
-                                            's2' if text belongs to sequence 2
-                                            'common' if text belongs to both
+                        -> dictionary structure : {'deletion': (int, int), 'insertion': list}
         """
         s1_tokens = self._tokenizer.tokenize(s1)
         s2_tokens = self._tokenizer.tokenize(s2)
@@ -62,26 +77,9 @@ class MergeSubSeq(object):
                                       s2=s2_tokens)
         obj = lcs.main()
         changes = []
-        if not obj:
-            logger.info('nothing is common between the two sequences')
-            changes = [{'deletion': {'tokens': s1_tokens, 'span': (s1_spans[0][0], s1_spans[-1][1])},
-                        'insertion': {'tokens': s2_tokens, 'position': s1_spans[-1][1]}
-                        }]
-        else:
-            for tup_a, tup_b in MergeSubSeq.__combine(obj):
-                _del = [idx for idx in range(tup_a[0] + 1, tup_b[0])]
-                _t = [s2_tokens[idx] for idx in range(tup_a[1] + 1, tup_b[1])]
-                insertion = {'tokens': _t, 'position': s1_spans[tup_b[0]][0]} if _t else None
-                deletion = {'tokens': [s1_tokens[idx] for idx in _del],
-                            'span': (s1_spans[_del[0]][0], s1_spans[_del[-1]][1])} if _del else None
-                pair = {'deletion': deletion, 'insertion': insertion}
-                changes += [pair]
+        for tup_a, tup_b in MergeSubSeq.__combine(obj):
+            del_idxs, ins_idxs = MergeSubSeq.__process_tuple(tup_a, tup_b)
+            changes.append({'deletion': (s1_spans[del_idxs[0]][0], s1_spans[del_idxs[-1]][1]) if del_idxs else None,
+                            'insertion': [s2_tokens[idx] for idx in ins_idxs] if ins_idxs else None})
 
-                changes = list(filter(lambda x: reduce(lambda a, b: a or b, x.values()), changes))
-
-        changes = [{'deletion': item['deletion']['span'] if item['deletion'] else None,
-                    'insertion': item['insertion']['tokens'] if item['insertion'] else None} for item in changes]
-
-        logger.info('successfully extracted changes')
-
-        return changes
+        return list(filter(lambda x: reduce(lambda a, b: a or b, x.values()), changes))
