@@ -60,7 +60,11 @@ class MergeSubSeq(object):
         """
         idxs_a = MergeSubSeq.__process_item(prev_tup[0], tup[0])
         idxs_b = MergeSubSeq.__process_item(prev_tup[1], tup[1])
-        return (idxs_a, idxs_b)
+        ins_idx = None
+        if idxs_b:
+            ins_idx = prev_tup[1] if prev_tup else 0
+
+        return (idxs_a, idxs_b, ins_idx)
 
     def extract(self, s1, s2):
         """
@@ -78,8 +82,15 @@ class MergeSubSeq(object):
         obj = lcs.main()
         changes = []
         for tup_a, tup_b in MergeSubSeq.__combine(obj):
-            del_idxs, ins_idxs = MergeSubSeq.__process_tuple(tup_a, tup_b)
-            changes.append({'deletion': (s1_spans[del_idxs[0]][0], s1_spans[del_idxs[-1]][1]) if del_idxs else None,
-                            'insertion': [s2_tokens[idx] for idx in ins_idxs] if ins_idxs else None})
+            del_idxs, ins_idxs, ins_tok_pos = MergeSubSeq.__process_tuple(tup_a, tup_b)
+            ins_tokens = [s2_tokens[idx] for idx in ins_idxs] if ins_idxs else None
+            ins_pos = s1_spans[ins_tok_pos][1] if ins_tok_pos is not None else None
 
-        return list(filter(lambda x: reduce(lambda a, b: a or b, x.values()), changes))
+            if ins_tok_pos is None and ins_tokens:
+                logger.warning('"{}" has insertion tokens but no insertion position'.format(s1))
+            changes.append({'deletion': (s1_spans[del_idxs[0]][0], s1_spans[del_idxs[-1]][1]) if del_idxs else None,
+                            'insertion': {'tokens': ins_tokens,
+                                          'position': ins_pos}})
+
+        return list(filter(lambda x: reduce(lambda a, b: a or reduce(lambda x, y: x or y, b.values())
+                                            , x.values()), changes))
