@@ -60,9 +60,8 @@ class MergeSubSeq(object):
         """
         idxs_a = MergeSubSeq.__process_item(prev_tup[0], tup[0])
         idxs_b = MergeSubSeq.__process_item(prev_tup[1], tup[1])
-        ins_idx = None
-        if idxs_b:
-            ins_idx = prev_tup[1] if prev_tup else 0
+
+        ins_idx = idxs_a[-1] if idxs_a else prev_tup[0] if prev_tup[0] else -1
 
         return (idxs_a, idxs_b, ins_idx)
 
@@ -76,7 +75,9 @@ class MergeSubSeq(object):
         """
         s1_tokens = self._tokenizer.tokenize(s1)
         s2_tokens = self._tokenizer.tokenize(s2)
+
         s1_spans = list(self._tokenizer.span_tokenize(s1))
+
         lcs = LongestContiguousSubSeq(s1=s1_tokens,
                                       s2=s2_tokens)
         obj = lcs.main()
@@ -84,13 +85,17 @@ class MergeSubSeq(object):
         for tup_a, tup_b in MergeSubSeq.__combine(obj):
             del_idxs, ins_idxs, ins_tok_pos = MergeSubSeq.__process_tuple(tup_a, tup_b)
             ins_tokens = [s2_tokens[idx] for idx in ins_idxs] if ins_idxs else None
-            ins_pos = s1_spans[ins_tok_pos][1] if ins_tok_pos is not None else None
+            deletion = (s1_spans[del_idxs[0]][0], s1_spans[del_idxs[-1]][1]) if del_idxs else None
+
+            ins_pos = s1_spans[ins_tok_pos][
+                1] if ins_tok_pos is not None and ins_tok_pos != -1 else 0 if ins_tok_pos == -1 else None
 
             if ins_tok_pos is None and ins_tokens:
                 logger.warning('"{}" has insertion tokens but no insertion position'.format(s1))
-            changes.append({'deletion': (s1_spans[del_idxs[0]][0], s1_spans[del_idxs[-1]][1]) if del_idxs else None,
-                            'insertion': {'tokens': ins_tokens,
-                                          'position': ins_pos}})
 
-        return list(filter(lambda x: reduce(lambda a, b: a or reduce(lambda x, y: x or y, b.values())
+            changes.append({'deletion': deletion,
+                            'insertion': {'tokens': ins_tokens,
+                                          'position': ins_pos} if ins_tokens else None})
+
+        return list(filter(lambda x: reduce(lambda a, b: a or b
                                             , x.values()), changes))

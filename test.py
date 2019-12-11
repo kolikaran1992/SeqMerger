@@ -14,8 +14,13 @@ pairs = [
     (
         'We want the power',
         'I have the power'
+    ),
+    (
+        'I have power',
+        'I have the power'
     )
+
 ]
-for s1, s2 in pairs[-1:]:
+for s1, s2 in pairs:
     a = seq_merge.extract(s1, s2)
     print(a)
